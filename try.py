@@ -6,13 +6,30 @@ from transformers import AutoModelForImageSegmentation
 import os
 from pathlib import Path
 import sys
+import time
 
-def print_progress_bar(current, total, bar_length=50):
-    """打印字符版进度条"""
+def print_progress_bar(current, total, start_time, bar_length=50):
+    """打印字符版进度条和预计剩余时间（格式：HH:MM:SS）"""
     percent = float(current) * 100 / total
     arrow = '=' * int(percent/100 * bar_length - 1) + '>'
     spaces = ' ' * (bar_length - len(arrow))
-    print(f'\r[{arrow}{spaces}] {percent:.2f}%', end='', flush=True)
+    
+    # 计算剩余时间
+    elapsed_time = time.time() - start_time
+    if current > 0:
+        time_per_item = elapsed_time / current
+        remaining_items = total - current
+        remaining_seconds = time_per_item * remaining_items
+        
+        # 转换为时分秒格式
+        hours = int(remaining_seconds // 3600)
+        minutes = int((remaining_seconds % 3600) // 60)
+        seconds = int(remaining_seconds % 60)
+        time_str = f" - 预计剩余时间: {hours:02d}:{minutes:02d}:{seconds:02d}"
+    else:
+        time_str = ""
+    
+    print(f'\r[{arrow}{spaces}] {percent:.2f}%{time_str}', end='', flush=True)
 
 def process_image(model, image_path, output_path):
     # Data settings
@@ -53,11 +70,14 @@ def main(input_path):
         image_files = [f for f in input_path.glob('*') if f.suffix.lower() in ['.png', '.jpg', '.jpeg']]
         total_files = len(image_files)
         
+        # 记录开始时间
+        start_time = time.time()
+        
         # 处理每个图片并更新进度条
         for i, img_file in enumerate(image_files, 1):
             output_path = output_dir / img_file.name
             process_image(model, str(img_file), str(output_path))
-            print_progress_bar(i, total_files)
+            print_progress_bar(i, total_files, start_time)
         
         print()  # 打印一个换行
     
